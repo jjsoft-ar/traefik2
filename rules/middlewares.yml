@@ -1,0 +1,41 @@
+http:
+    middlewares:
+        middlewares-basic-auth:
+            basicAuth:
+                realm: "Traefik2 Basic Auth"
+                users:
+                    - "admin:$apr1$vngADTJE$ALEsBhnVuvYyyqXWtke3P0"
+                    - "jjsoft:$apr1$X/8n3pLc$2yf6ljUjXddy.lANP9jXm."
+                # userFile: /shared/.htpasswd
+        middlewares-rate-limit:
+            rateLimit:
+                average: 100
+                burst: 50          
+        middlewares-secure-headers:
+            headers:
+                accessControlAllowMethods: 
+                    - "GET"
+                    - "OPTIONS"
+                    - "PUT"
+                # accessControlAllowOriginList = "*"
+                accessControlMaxAge: 100
+                hostsProxyHeaders: 
+                    - "X-Forwarded-Host"
+                sslRedirect: true
+                stsSeconds: 63072000
+                stsIncludeSubdomains: true
+                stsPreload: true
+                forceSTSHeader: true
+                customFrameOptionsValue: "allow-from https:docker.localhost" #CSP takes care of this but may be needed for organizr. 
+                contentTypeNosniff: true 
+                browserXssFilter: true 
+                referrerPolicy: "same-origin" 
+        # errorpages:
+        #     errors:
+        #         status: 
+        #             - "404-499"
+        #             - "500-599"
+        #         service: "errorpages-svc@docker"
+        #         query: "/{status}"
+
+         

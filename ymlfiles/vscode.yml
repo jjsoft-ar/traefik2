@@ -1,0 +1,32 @@
+version: "3.7"
+services:
+
+# VSCode - VSCode Editing
+  vscode:
+#    user: $PUID:$PGID
+    image: codercom/code-server:latest
+    container_name: vscode
+    restart: unless-stopped
+    networks:
+      - traefik_proxy
+#    ports:
+#      - "8080:8080"
+#    security_opt:
+#      - no-new-privileges:true
+    volumes:
+      - $USERDIR/docker/vscode:/home/coder
+      - $USERDIR/docker/traefik2:/home/coder/traefik2
+    labels:
+      - "traefik.enable=true"
+      ## HTTP Routers
+      - "traefik.http.routers.vscode-rtr.entrypoints=https"
+      - "traefik.http.routers.vscode-rtr.rule=HostHeader(`vscode.$DOMAINNAME`)"
+      ## Middlewares
+      - "traefik.http.routers.vscode-rtr.middlewares=secure-chain@file"
+      ## HTTP Services
+      - "traefik.http.routers.vscode-rtr.service=vscode-svc"
+      - "traefik.http.services.vscode-svc.loadbalancer.server.port=8080"
+
+networks:
+  traefik_proxy:
+    external: true
