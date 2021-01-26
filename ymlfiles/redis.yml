@@ -1,0 +1,50 @@
+version: "3.7"
+services:
+
+  ## Redis - Key-value Store
+  redis:
+    container_name: redis
+    image: redis:latest
+    restart: unless-stopped
+    entrypoint: redis-server --appendonly yes
+    networks:
+      - t2_proxy
+    ports:
+      - "6379:6379"
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - $DOCKERDIR/data/redis/data:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+
+  ## Redis Commander - Redis Management Tool
+  rediscommander:
+    container_name: rediscommander
+    image: rediscommander/redis-commander:latest
+    restart: unless-stopped
+    networks:
+      t2_proxy:
+        ipv4_address: 192.168.90.251
+    # ports:
+    #   - "$REDISCOMMANDER_PORT:8081"
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - REDIS_HOST=redis
+    labels:
+      - "traefik.enable=true"
+      ## HTTP Routers
+      - "traefik.http.routers.rediscommander-rtr.entrypoints=https"
+      - "traefik.http.routers.rediscommander-rtr.rule=Host(`rediscom.$DOMAINNAME`)"
+      - "traefik.http.routers.rediscommander-rtr.tls=true"
+      ## Middlewares
+      # - "traefik.http.routers.rediscommander-rtr.middlewares=chain-authelia@file"
+      - "traefik.http.routers.rediscommander-rtr.middlewares=chain-basic-auth@file"
+      ## HTTP Services
+      - "traefik.http.routers.rediscommander-rtr.service=rediscommander-svc"
+      - "traefik.http.services.rediscommander-svc.loadbalancer.server.port=8081"
+
+networks:
+    t2_proxy:
+        external: true

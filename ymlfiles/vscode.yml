@@ -14,8 +14,8 @@ services:
 #    security_opt:
 #      - no-new-privileges:true
     volumes:
-      - $USERDIR/docker/vscode:/home/coder
-      - $USERDIR/docker/traefik2:/home/coder/traefik2
+      - $DOCKERDIR/data/vscode:/home/coder
+      - $USERDIR/sites:/home/coder/sites
     labels:
       - "traefik.enable=true"
       ## HTTP Routers

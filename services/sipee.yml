@@ -1,0 +1,135 @@
+version: '3.3'
+
+services:
+
+    # sipeedb:
+    #     image: aguaragazu/mariadb:10.3
+    #     volumes:
+    #         - ../../data/sipee/mysql:/var/lib/mysql
+    #         - "./config/my.cnf:/etc/mysql/conf.d/my.cnf"
+    #     ports:
+    #         - "3367:3306"
+    #     labels:
+    #         - "traefik.enable=false"
+    #     networks:
+    #         - sipee.josefe.jjsoftsistemas.com
+    #     environment:
+    #         MYSQL_USER: ${APP_MYSQL_USERNAME}
+    #         MYSQL_PASS: ${APP_MYSQL_PASSWORD}
+    #         MYSQL_ROOT_PASSWORD: ${APP_MYSQL_ROOT_PASSWORD}
+    #         MYSQL_DATABASE: bs_sipee
+    #     container_name: sipeedb
+
+    # sipeepma:
+    #     container_name: sipeepma
+    #     image: phpmyadmin/phpmyadmin
+    #     depends_on:
+    #         - sipeedb
+    #     links: 
+    #         - sipeedb
+    #     labels:
+    #         - traefik.backend=sipeepma
+    #         - traefik.frontend.rule=Host:sipeepma.josefe.jjsoftsistemas.com
+    #         - traefik.docker.network=proxy.josefe.jjsoftsistemas.com
+    #         - traefik.port=80
+    #     networks:
+    #         - proxy.josefe.jjsoftsistemas.com
+    #         - sipee.josefe.jjsoftsistemas.com
+    #     environment:
+    #         - PMA_HOST=sipeedb
+    #     volumes:
+    # #      - $PWD/phpmyadmin/config.user.inc.php:/etc/phpmyadmin/config.user.inc.php
+    #         - ../../data/sipee/sipeepma/sessions:/sessions
+
+    sipee-jl:
+        image: servivum/nginx:1.15-lemp-stack
+        volumes:
+            - ./config/default.conf:/etc/nginx/conf.d/default.conf
+        #    - ./nginx.conf:/etc/nginx/nginx.conf
+            - ../../workspace/sipee:/var/www
+            - ../../backups/sipee/archivos:/var/archivos
+        labels:
+            - "traefik.enable=true"
+            ## HTTP Routers
+            - "traefik.http.routers.sipee-jl-rtr.entrypoints=https"
+            - "traefik.http.routers.sipee-jl-rtr.rule=HostHeader(`sipee.$DOMAINNAME`)"
+            - "traefik.http.routers.sipee-jl-rtr.tls=true"
+            - "traefik.http.routers.sipee-jl-rtr.tls.certresolver=dns-cloudflare"
+            ## Middlewares
+            - "traefik.http.routers.sipee-jl-rtr.middlewares=chain-no-auth@file"
+            ## HTTP Services
+            - "traefik.http.routers.sipee-jl-rtr.service=sipee-jl-svc"
+            - "traefik.http.services.sipee-jl-svc.loadbalancer.server.port=80"
+        networks:
+            - t2_proxy
+            - t2_mariadb
+        container_name: sipee-jl
+        links:
+            - mariadb-jl
+        depends_on:
+            - mariadb-jl
+            - sipeephp-jl
+        environment:
+            - FASTCGI_PASS_HOST=sipeephp-jl
+
+    sipeephp-jl:
+        container_name: sipeephp
+        build:
+            context: ../../docker/php-fpm/7.3-ubuntu
+            dockerfile: Dockerfile
+        image: aguaragazu/php:7.3-fpm-ubuntu
+        networks:
+            - sipee.josefe.jjsoftsistemas.com
+        labels:
+            - traefik.enable=false
+        links:
+            - sipeedb
+        volumes:
+            - ../../data/sipee/logs:/var/log/nginx
+            - ../../data/sipee/conf.d:/usr/local/etc/php/conf.d
+            - ../../workspace/sipee.josefe.jjsoftsistemas.com:/var/www
+            - ../../backups/sipee/archivos:/var/archivos
+            - ./config/php.ini:/usr/local/etc/php/conf.d/php.ini
+        working_dir: /var/www
+        environment:
+            - "DB_HOST=sipeedb" #connect to this mariadb host - use this on your src code config
+            - "PHP.date.timezone=America/Argentina/Buenos_Aires"
+    
+    sipeedb-jobs:
+        build: ../../docker/mariadb-backup/alpine-with-jobs
+        container_name: sipeedb-jobs
+        user: root
+        environment:
+            MYSQL_CONTAINER_NAME: sipeedb
+            MYSQL_DATABASE: bs_sipee
+            MYSQL_ROOT_PASSWORD: ${APP_MYSQL_ROOT_PASSWORD}
+        volumes:
+            - /etc/localtime:/etc/localtime:ro
+            - ../../backups/sipee/mariadb:/opt/mysql/backup
+        command: crond -f -d 8
+        labels:
+            - traefik.enable=false
+        networks:
+            - sipee.josefe.jjsoftsistemas.com
+
+    sipeedocs:
+        container_name: sipeedocs
+        build:
+            context: ../../docker/appdocs
+            dockerfile: Dockerfile
+        volumes:
+            - "../../backups/sipee/mysql:/opt/mysql/backup"
+            - "../../workspace/sipee.josefe.jjsoftsistemas.com:/var/www"
+            - "../../backups/sipee/archivos:/var/archivos"
+            - "../../data/redis:/data"
+        tty: true
+        networks:
+            - sipee.josefe.jjsoftsistemas.com
+        labels:
+            - traefik.enable=false
+
+networks:
+    proxy.josefe.jjsoftsistemas.com:
+        external: true
+    sipee.josefe.jjsoftsistemas.com:
+        internal: true
