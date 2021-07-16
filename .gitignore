@@ -1,2 +1,5 @@
 traefik/acme/acme.json
 traefik/rules/
+data
+logs
+.env

@@ -1,0 +1,48 @@
+version: 3.3
+
+services:
+  bind:
+    container_name: webmin-bind
+    restart: always
+    image: sameersbn/bind:9.16.1-20200524
+    ports:
+      - "54:53/udp"
+      - "54:53/tcp"
+      - "10001:10000/tcp"
+    dns:
+      - 153.92.2.25
+      - 9.9.9.9
+      - 8.8.4.4
+      - 192.168.90.2
+    volumes:
+      - $DOCKERDIR/data/bind:/data
+    networks:
+      t2_proxy: 
+        ipv4_address: 192.168.90.2
+    environment:
+      - WEBMIN_INIT_SSL_ENABLED:0
+      - WEBMIN_INIT_REDIRECT_PORT:443
+      - WEBMIN_INIT_REFERERS:webhost.$DOMAINNAME
+      - ROOT_PASSWORD=268423
+    labels:
+      - "traefik.enable=true"
+      - traefik.tags= t2_proxy
+      - traefik.docker.network=t2_proxy
+      ## HTTP Routers
+      - traefik.http.routers.webmin.entrypoints=https
+      - traefik.http.routers.webmin.rule=Host(`webhost.$DOMAINNAME`)
+      - traefik.http.routers.webmin.tls=true
+      - traefik.http.routers.webmin.tls.certresolver=dns-cloudflare
+      ## Middlewares
+      - "traefik.http.routers.webmin.middlewares=chain-no-auth@file"
+      ## HTTP Services
+      - "traefik.http.routers.webmin.service=webmin-svc"
+      - "traefik.http.services.webmin-svc.loadbalancer.server.port=10001"
+
+networks:
+  default:
+    external:
+      name: default
+  t2_proxy:
+    external:
+      name: t2_proxy
