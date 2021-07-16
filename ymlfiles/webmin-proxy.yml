@@ -1,0 +1,31 @@
+version: "3.7"
+
+services:
+  webmin-proxy:
+    image: qoomon/docker-host
+    restart: always
+    cap_add: ["NET_ADMIN", "NET_RAW"]
+    labels:
+      - traefik.enable=true
+      - traefik.http.middlewares.webmin-redirect-websecure.redirectscheme.scheme=https
+      - traefik.http.routers.webmin-web.rule=Host(`webhost.$DOMAINNAME`)
+      - traefik.http.routers.webmin-web.entrypoints=https
+      - traefik.http.routers.webmin-web.middlewares=webmin-redirect-websecure
+      - traefik.http.routers.webmin-websecure.entrypoints=websecure
+      - traefik.http.routers.webmin-websecure.rule=Host(`webhost.$DOMAINNAME`)
+      - traefik.tags=t2_proxy
+      - traefik.docker.network=t2_proxy
+      - traefik.http.routers.webmin-websecure.tls=true
+      # - traefik.http.routers.webmin-websecure.tls.certresolver=dns-cloudflare
+      - traefik.http.services.webmin-global.loadbalancer.server.port=10000
+    networks:
+      default
+      t2_proxy
+
+networks:
+  default:
+    external:
+      name: default
+  t2_proxy:
+    external:
+      name: t2_proxy
