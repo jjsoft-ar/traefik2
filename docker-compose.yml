@@ -123,7 +123,7 @@ services:
 
   ############################# WEBMIN-BIND9
   bind:
-    container_name: webmin-bind
+    container_name: dns
     restart: always
     image: sameersbn/bind:9.16.1-20200524
     ports:
@@ -141,9 +141,10 @@ services:
       t2_proxy: 
         ipv4_address: 192.168.90.2
     environment:
-      - WEBMIN_INIT_SSL_ENABLED:0
-      - WEBMIN_INIT_REDIRECT_PORT:443
-      - WEBMIN_INIT_REFERERS:webhost.$DOMAINNAME
+      - WEBMIN_INIT_SSL_ENABLED=false
+      # - WEBMIN_INIT_REDIRECT_PORT=443
+      - WEBMIN_INIT_REFERERS=dns.$DOMAINNAME
+      - WEBMIN_ENABLED=true
       - ROOT_PASSWORD=268423
     labels:
       - "traefik.enable=true"
