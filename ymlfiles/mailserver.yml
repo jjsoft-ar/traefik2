@@ -1,0 +1,42 @@
+version: 3.3
+
+services:
+  cert-renewer-traefik:
+    image: youtous/mailserver-traefik:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - $DOCKERDIR/acme/acme.json:/tmp/traefik/acme.json:ro # link traefik acme.json file (read-only)
+    environment:
+      - TRAEFIK_VERSION=2
+      - CERTS_SOURCE=file
+      - DOMAINS=mail.$DOMAINNAME
+    network:
+      - internal
+
+  mailserver:
+    image: docker-mailserver/docker-mailserver:latest
+    hostname: mail
+    domainname: $DOMAINNAME
+    labels:
+      - "mailserver-traefik.renew.domain=mail.$DOMAINNAME" # tag the service 
+
+      # traefik configuration using labels, not required
+      - "traefik.enable=true" # use traefik v2 for certificate generation
+      - "traefik.port=443" # dummy port, required generating certs with traefik
+      - "traefik.http.routers.mail.rule=Host(`mail.$DOMAINNAME`)" 
+      - "traefik.http.routers.mail.entrypoints=https"
+      - "traefik.http.routers.mail.middlewares=redirect-webmail@docker" # redirect to webmail
+      - "traefik.http.middlewares.redirect-webmail.redirectregex.regex=.*"
+      - "traefik.http.middlewares.redirect-webmail.redirectregex.replacement=https://mail.$DOMAINNAME/"
+    environment:
+      - SSL_TYPE=manual # enable SSL on the mailserver
+      - SSL_CERT_PATH=/var/mail-state/manual-ssl/cert
+      - SSL_KEY_PATH=/var/mail-state/manual-ssl/key
+
+networks:
+  default:
+    external:
+      name: default
+  t2_proxy:
+    external:
+      name: t2_proxy
